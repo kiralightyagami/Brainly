@@ -1,9 +1,11 @@
 import 'dotenv/config'
 import mongoose, {model, Schema} from 'mongoose';
 
+
 const DB_URL = process.env.DB_URL;
 
-mongoose.connect(DB_URL as string);
+//@ts-ignore
+mongoose.connect(DB_URL);
 
 const userSchema = new Schema({
     username: {type: String, unique: true},

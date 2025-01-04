@@ -16,7 +16,7 @@ export const userMiddleware = (req: Request, res: Response,
         res.status(403).json({
             message: "Unauthorized"
         });
-
+    }
 }
 
 
