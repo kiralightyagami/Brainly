@@ -2,18 +2,19 @@ import 'dotenv/config'
 import mongoose from 'mongoose';
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { userModal ,contentModal } from './db';
+import { userModal ,contentModal, linkModal } from './db';
 import { userMiddleware } from './middleware';
 const JWT_PASSWORD = process.env.JWT_PASSWORD as string;
 import { z } from "zod";
 import bcrypt from "bcrypt";
+import { random } from './utils';
 const app = express();
 app.use(express.json());
 
 
 
 app.post("/api/v1/signup",  async(req, res) => {
-    // have to do zod validation, hashed password
+    // have to do zod validation, hashed password Done
     
     try{
     const schema = z.object({
@@ -123,7 +124,7 @@ app.post("/api/v1/signin", async (req, res) => {
     
 
    
-})
+});
 
 app.post("/api/v1/content", userMiddleware , async (req, res) => {
     const link = req.body.link;
@@ -163,12 +164,76 @@ app.delete("/api/v1/content", userMiddleware ,async (req, res) => {
     })
 })
 
-app.post("/api/v1/brain/share",  (req, res) => {
+app.post("/api/v1/brain/share", userMiddleware, async (req, res) => {
+    const share = req.body.share;
 
+    if(share){
+
+        const existingLink = await linkModal.findOne({
+            //@ts-ignore
+            userId: req.userId
+        });
+
+        if(existingLink){
+            res.json({
+            hash: existingLink.hash
+        })
+        return;
+        }
+        
+        const hash = random(10);
+        await linkModal.create({
+            //@ts-ignore
+            userId: req.userId,
+            hash: hash
+        })
+
+        res.json({
+            message: "/share/" + hash
+        })
+    } else {
+        await linkModal.deleteOne({
+            //@ts-ignore
+            userId: req.userId
+        })
+
+        res.json({
+            message: "Link removed"
+        })
+        
+    }
 })
 
-app.get("/api/v1/brain/:shareLink",  (req, res) => {
+app.get("/api/v1/brain/:shareLink",  async (req, res) => {
 
+    const hash = req.params.shareLink;
+    
+    const link = await linkModal.findOne({
+        hash
+    })
+
+    if(!link){
+        res.status(411).json({
+          message: "Link not found"  
+        })
+        return;
+    }
+
+    const content = await contentModal.find({
+        //@ts-ignore
+        userId: link.userId
+    })
+
+    const user = await userModal.findOne({
+        //@ts-ignore
+        _id: link.userId
+    })
+
+    res.json({
+        username: user?.username,
+        content: content
+    })
+        
 })
 
 app.listen(3000);
